@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>渔米之乡 - 快乐厨房</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap');
+        
+        * {
+            font-family: 'Noto Sans SC', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        body {
+            background: linear-gradient(180deg, #fff8e7 0%, #ffe4b5 100%);
+            min-height: 100vh;
+            overflow: hidden;
+        }
+        
+        .ingredient {
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            user-select: none;
+        }
+        
+        .ingredient:hover {
+            transform: scale(1.1);
+        }
+        
+        .ingredient:active {
+            transform: scale(0.95);
+        }
+        
+        .pot {
+            animation: potBounce 2s ease-in-out infinite;
+        }
+        
+        @keyframes potBounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
+        
+        .steam {
+            animation: steamRise 2s ease-out infinite;
+        }
+        
+        @keyframes steamRise {
+            0% { opacity: 0; transform: translateY(0) scale(0.5); }
+            50% { opacity: 0.6; }
+            100% { opacity: 0; transform: translateY(-40px) scale(1.2); }
+        }
+        
+        .dish-complete {
+            animation: dishPop 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+        
+        @keyframes dishPop {
+            0% { transform: scale(0); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        
+        .click-effect {
+            animation: clickRipple 0.5s ease-out forwards;
+            pointer-events: none;
+        }
+        
+        @keyframes clickRipple {
+            0% { transform: scale(0); opacity: 1; }
+            100% { transform: scale(2); opacity: 0; }
+        }
+        
+        .progress-fill {
+            transition: width 0.3s ease;
+        }
+        
+        .bounce-in {
+            animation: bounceIn 0.5s ease;
+        }
+        
+        @keyframes bounceIn {
+            0% { transform: scale(0); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+    </style>
+</head>
+<body>
+    <div id="app" class="min-h-screen flex flex-col">
+        <!-- 顶部标题 -->
+        <div class="text-center py-4 px-4">
+            <h1 class="text-2xl font-bold text-amber-800">🍳 渔米之乡 · 快乐厨房</h1>
+            <p class="text-amber-600 text-sm mt-1">点击食材，做出美味江南菜！</p>
+        </div>
+
+        <!-- 游戏主区域 -->
+        <div class="flex-1 flex flex-col items-center justify-center px-4 relative" id="gameArea">
+            <!-- 当前菜品 -->
+            <div class="text-center mb-4">
+                <div class="inline-block bg-white/80 rounded-full px-6 py-2 shadow-lg">
+                    <span class="text-amber-800 font-semibold">正在做：</span>
+                    <span id="dishName" class="text-amber-600 font-bold">红烧鲫鱼</span>
+                </div>
+            </div>
+
+            <!-- 锅区域 -->
+            <div class="relative mb-6">
+                <!-- 蒸汽效果 -->
+                <div id="steamContainer" class="absolute -top-8 left-1/2 -translate-x-1/2 flex gap-2">
+                    <div class="steam w-4 h-4 bg-white/60 rounded-full" style="animation-delay: 0s"></div>
+                    <div class="steam w-5 h-5 bg-white/60 rounded-full" style="animation-delay: 0.5s"></div>
+                    <div class="steam w-4 h-4 bg-white/60 rounded-full" style="animation-delay: 1s"></div>
+                </div>
+                
+                <!-- 锅 -->
+                <div id="pot" class="pot w-48 h-32 bg-gradient-to-b from-gray-700 to-gray-900 rounded-b-full relative overflow-visible shadow-2xl">
+                    <div class="absolute top-2 left-4 right-4 h-2 bg-gray-600 rounded-full"></div>
+                    <div id="potContent" class="absolute inset-4 rounded-b-full bg-gradient-to-b from-amber-100 to-amber-200 flex items-center justify-center">
+                        <span id="potEmoji" class="text-4xl">🔥</span>
+                    </div>
+                </div>
+                <!-- 锅把手 -->
+                <div class="absolute -left-6 top-1/2 w-8 h-3 bg-gray-600 rounded-l-full"></div>
+                <div class="absolute -right-6 top-1/2 w-8 h-3 bg-gray-600 rounded-r-full"></div>
+            </div>
+
+            <!-- 进度条 -->
+            <div class="w-64 mb-6">
+                <div class="flex justify-between text-sm text-amber-700 mb-1">
+                    <span>烹饪进度</span>
+                    <span id="progressText">0%</span>
+                </div>
+                <div class="h-4 bg-white/50 rounded-full overflow-hidden shadow-inner">
+                    <div id="progressBar" class="progress-fill h-full bg-gradient-to-r from-green-400 to-green-500 rounded-full" style="width: 0%"></div>
+                </div>
+            </div>
+
+            <!-- 食材区域 -->
+            <div class="w-full max-w-sm">
+                <p class="text-center text-amber-700 mb-3 font-medium">👇 点击食材加入锅中</p>
+                <div id="ingredients" class="grid grid-cols-4 gap-3">
+                    <!-- 食材动态生成 -->
+                </div>
+            </div>
+        </div>
+
+        <!-- 完成弹窗 -->
+        <div id="completeModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
+            <div class="bg-white rounded-3xl p-8 mx-4 max-w-sm w-full text-center dish-complete">
+                <div class="text-7xl mb-4" id="dishEmoji">🐟</div>
+                <h2 class="text-2xl font-bold text-amber-800 mb-2">🎉 做菜成功！</h2>
+                <p class="text-amber-600 mb-2">您完成了</p>
+                <p class="text-xl font-bold text-green-600 mb-6" id="completeDishName">红烧鲫鱼</p>
+                <div class="flex gap-3">
+                    <button onclick="nextDish()" class="flex-1 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl font-semibold shadow-lg">
+                        下一道菜
+                    </button>
+                    <button onclick="restartGame()" class="px-6 py-3 bg-gray-100 text-gray-600 rounded-xl font-semibold">
+                        重来
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 底部 -->
+        <div class="text-center py-4 text-amber-600 text-xs">
+            渔米之乡饮食文化APP · 互动体验小游戏
+        </div>
+    </div>
+
+    <script>
+        // 菜品数据
+        const dishes = [
+            {
+                name: '红烧鲫鱼',
+                emoji: '🐟',
+                ingredients: [
+                    { emoji: '🐟', name: '鲫鱼', added: false },
+                    { emoji: '🧅', name: '葱姜', added: false },
+                    { emoji: '🫒', name: '油', added: false },
+                    { emoji: '🍶', name: '料酒', added: false },
+                    { emoji: '🧂', name: '盐', added: false },
+                    { emoji: '🍯', name: '酱油', added: false },
+                    { emoji: '🌶️', name: '辣椒', added: false },
+                    { emoji: '💧', name: '清水', added: false }
+                ]
+            },
+            {
+                name: '清蒸鲈鱼',
+                emoji: '🐠',
+                ingredients: [
+                    { emoji: '🐠', name: '鲈鱼', added: false },
+                    { emoji: '🧄', name: '蒜', added: false },
+                    { emoji: '🧅', name: '葱丝', added: false },
+                    { emoji: '🍯', name: '蒸鱼豉油', added: false },
+                    { emoji: '🫒', name: '热油', added: false },
+                    { emoji: '🧂', name: '盐', added: false },
+                    { emoji: '🍶', name: '料酒', added: false },
+                    { emoji: '🥢', name: '姜丝', added: false }
+                ]
+            },
+            {
+                name: '东坡肉',
+                emoji: '🥩',
+                ingredients: [
+                    { emoji: '🥩', name: '五花肉', added: false },
+                    { emoji: '🍶', name: '黄酒', added: false },
+                    { emoji: '🍯', name: '酱油', added: false },
+                    { emoji: '🍬', name: '冰糖', added: false },
+                    { emoji: '🧅', name: '葱', added: false },
+                    { emoji: '🧄', name: '姜', added: false },
+                    { emoji: '🌱', name: '八角', added: false },
+                    { emoji: '💧', name: '高汤', added: false }
+                ]
+            },
+            {
+                name: '龙井虾仁',
+                emoji: '🦐',
+                ingredients: [
+                    { emoji: '🦐', name: '虾仁', added: false },
+                    { emoji: '🍵', name: '龙井茶', added: false },
+                    { emoji: '🥚', name: '蛋清', added: false },
+                    { emoji: '🧂', name: '盐', added: false },
+                    { emoji: '🫒', name: '色拉油', added: false },
+                    { emoji: '🍶', name: '料酒', added: false },
+                    { emoji: '🌽', name: '淀粉', added: false },
+                    { emoji: '💧', name: '茶水', added: false }
+                ]
+            },
+            {
+                name: '大闸蟹',
+                emoji: '🦀',
+                ingredients: [
+                    { emoji: '🦀', name: '大闸蟹', added: false },
+                    { emoji: '🍶', name: '料酒', added: false },
+                    { emoji: '🧄', name: '姜', added: false },
+                    { emoji: '🧂', name: '盐', added: false },
+                    { emoji: '🥟', name: '紫苏', added: false },
+                    { emoji: '🍋', name: '醋', added: false },
+                    { emoji: '💧', name: '清水', added: false },
+                    { emoji: '🌱', name: '葱结', added: false }
+                ]
+            }
+        ];
+
+        let currentDishIndex = 0;
+        let addedCount = 0;
+
+        // 初始化游戏
+        function initGame() {
+            const dish = dishes[currentDishIndex];
+            document.getElementById('dishName').textContent = dish.name;
+            document.getElementById('potEmoji').textContent = '🔥';
+            document.getElementById('progressBar').style.width = '0%';
+            document.getElementById('progressText').textContent = '0%';
+            addedCount = 0;
+            
+            // 重置食材状态
+            dish.ingredients.forEach(i => i.added = false);
+            
+            // 渲染食材
+            renderIngredients();
+        }
+
+        // 渲染食材
+        function renderIngredients() {
+            const container = document.getElementById('ingredients');
+            const dish = dishes[currentDishIndex];
+            
+            container.innerHTML = '';
+            dish.ingredients.forEach((ing, idx) => {
+                const div = document.createElement('div');
+                div.className = `ingredient flex flex-col items-center p-3 rounded-2xl ${ing.added ? 'bg-green-100 opacity-50' : 'bg-white shadow-lg'}`;
+                div.innerHTML = `
+                    <span class="text-3xl mb-1">${ing.emoji}</span>
+                    <span class="text-xs text-amber-700 font-medium">${ing.name}</span>
+                `;
+                
+                if (!ing.added) {
+                    div.onclick = (e) => addIngredient(idx, e);
+                }
+                
+                container.appendChild(div);
+            });
+        }
+
+        // 添加食材
+        function addIngredient(idx, e) {
+            const dish = dishes[currentDishIndex];
+            if (dish.ingredients[idx].added) return;
+            
+            dish.ingredients[idx].added = true;
+            addedCount++;
+            
+            // 点击特效
+            createClickEffect(e);
+            
+            // 更新进度
+            const progress = Math.round((addedCount / dish.ingredients.length) * 100);
+            document.getElementById('progressBar').style.width = progress + '%';
+            document.getElementById('progressText').textContent = progress + '%';
+            
+            // 更新锅里的内容
+            const addedEmojis = dish.ingredients.filter(i => i.added).map(i => i.emoji);
+            document.getElementById('potEmoji').textContent = addedEmojis.slice(-3).join(' ');
+            
+            // 重新渲染
+            renderIngredients();
+            
+            // 检查是否完成
+            if (addedCount === dish.ingredients.length) {
+                setTimeout(showComplete, 500);
+            }
+        }
+
+        // 点击特效
+        function createClickEffect(e) {
+            const effect = document.createElement('div');
+            effect.className = 'click-effect fixed w-16 h-16 rounded-full bg-green-300/50';
+            effect.style.left = (e.clientX - 32) + 'px';
+            effect.style.top = (e.clientY - 32) + 'px';
+            document.body.appendChild(effect);
+            setTimeout(() => effect.remove(), 500);
+        }
+
+        // 显示完成
+        function showComplete() {
+            const dish = dishes[currentDishIndex];
+            document.getElementById('dishEmoji').textContent = dish.emoji;
+            document.getElementById('completeDishName').textContent = dish.name;
+            document.getElementById('completeModal').classList.remove('hidden');
+        }
+
+        // 下一道菜
+        function nextDish() {
+            currentDishIndex = (currentDishIndex + 1) % dishes.length;
+            document.getElementById('completeModal').classList.add('hidden');
+            initGame();
+        }
+
+        // 重新开始
+        function restartGame() {
+            currentDishIndex = 0;
+            document.getElementById('completeModal').classList.add('hidden');
+            initGame();
+        }
+
+        // 启动游戏
+        initGame();
+    </script>
+</body>
+</html>
